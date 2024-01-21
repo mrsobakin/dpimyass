@@ -1,0 +1,12 @@
+[proxy]
+address = "127.0.0.1:1337"
+buffer = 16384
+timeout = 60
+
+[downstream]
+address = "endpoint.example.com:8888"
+buffer = 16384
+timeout = 60
+
+[obfuscation]
+key = [239, 42, 13, 69]
