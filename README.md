@@ -2,6 +2,8 @@
 
 DPIMyAss is a simple UDP proxy designed for bypassing DPI with close-to-zero overhead.
 
+![Funny image showing network architecture](./assets/network.svg)
+
 ## Why? 🤔
 
 I made this proxy to restore the wireguard functionality in places where it was blocked. DPIMyAss is way simpler than the other solutions like, say, shadowsocks, and it does not require messing with the ip interfaces to get it running. All you have to do to set it up with wireguard is run this proxy on both your server and client, and change the endpoint to local proxy address in your wireguard config.
