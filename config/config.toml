@@ -1,10 +1,10 @@
 [proxy]
-address = "127.0.0.1:1337"
+address = "0.0.0.0:1337"
 buffer = 16384
 timeout = 60
 
 [downstream]
-address = "endpoint.example.com:8888"
+address = "example.com:1337"
 buffer = 16384
 timeout = 60
 

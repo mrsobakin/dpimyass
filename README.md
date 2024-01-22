@@ -20,8 +20,7 @@ DPIMyAss also does not create any additional overhead on the network. The forwar
 
 These instructions will help you set up and run DPIMyAss on your local machine and server.
 
-### Usage 🚦
-
+### Build it yourself 🔨
 1. Clone this repo and `cd` into it
 2. Build the project:
 ```bash
@@ -32,21 +31,105 @@ cargo build --release
 ./target/build/dpimyass [config.toml]
 ```
 
+### Docker 🐋
+1. Clone this repo and `cd` into it
+2. Edit the config file `./config/config.toml`
+3. Run `docker-compose up -d`, and let docker do all the magic!
+
 ### Configuration ⚙️
 
 DPIMyAss uses a TOML configuration file to specify its settings. Below is an example configuration:
 
 ```toml
 [proxy]
-address = "127.0.0.1:1337"
+address = "0.0.0.0:1337"
 buffer = 16384
 timeout = 60
 
 [downstream]
-address = "endpoint.example.com:8888"
+address = "example.com:1337"
 buffer = 16384
 timeout = 60
 
 [obfuscation]
 key = [239, 42, 13, 69]
 ```
+
+## Troubleshooting 🪛
+You might encounter a problem when trying to use VPN over dpimyass hosted on the same machine. To fix this, you have to add an entry to a routing table with the endpoint IP bypassing your VPN. Here are a few examples of how to do this:
+
+### Windows
+1. Disable your VPN.
+2. Open PowerShell/CMD as an Administrator.
+3. Run the following command:
+```powershell
+route PRINT
+```
+Now take a look at the **IPv4 Route Table**:
+```
+IPv4 Route Table
+
+===========================================================================
+Active Routes:
+Network Destination        Netmask          Gateway       Interface  Metric
+          0.0.0.0          0.0.0.0       10.161.8.1       10.161.8.2     35
+       10.161.8.0    255.255.252.0         On-link        10.161.8.2    291
+       10.161.8.2  255.255.255.255         On-link        10.161.8.2    291
+    10.161.11.255  255.255.255.255         On-link        10.161.8.2    291
+        127.0.0.0        255.0.0.0         On-link         127.0.0.1    331
+
+        127.0.0.1  255.255.255.255         On-link         127.0.0.1    331
+  127.255.255.255  255.255.255.255         On-link         127.0.0.1    331
+       172.25.0.0    255.255.240.0         On-link        172.25.0.1   5256
+       172.25.0.1  255.255.255.255         On-link        172.25.0.1   5256
+    172.25.15.255  255.255.255.255         On-link        172.25.0.1   5256
+        224.0.0.0        240.0.0.0         On-link         127.0.0.1    331
+        224.0.0.0        240.0.0.0         On-link        172.25.0.1   5256
+        224.0.0.0        240.0.0.0         On-link        10.161.8.2    291
+
+  255.255.255.255  255.255.255.255         On-link         127.0.0.1    331
+  255.255.255.255  255.255.255.255         On-link        172.25.0.1   5256
+  255.255.255.255  255.255.255.255         On-link        10.161.8.2    291
+===========================================================================
+```
+Notice the line with Network Destination `0.0.0.0`, and remember the **Gateway** IP (`10.161.8.1` in this case).
+
+4. Execute the following command:
+```powershell
+route ADD <endpoint_ip> MASK 255.255.255.255 <gateway_ip>
+```
+where `<endpoint_ip>` is the IP of your VPN, and `<gateway_ip>` is the IP from step 3.
+
+5. If everything has worked, you will see `OK!` in your terminal window. You can close it now and try connecting again.
+
+### Linux
+For this example, we will use Debian 12, although the commands listed below should work on *most* modern distributions. For older distros, I advise you to consult your distro's manual.
+1. Disable your VPN.
+2. Open up your favorite terminal emulator and run `ip route`:
+```bash
+ip route
+```
+Example output of that command:
+```
+default via 172.25.0.1 dev eth0 proto kernel
+172.25.0.0/20 dev eth0 proto kernel scope link src 172.25.4.60
+```
+Remember the **default** gateway (`172.25.0.1` in this case).
+
+3. Run the following command:
+```bash
+sudo ip route add <endpoint_ip> via <gateway_ip>
+```
+If the command above has worked, you won't see anything in your terminal.
+
+4. Verify that the route has been created, by running:
+```bash
+ip route
+```
+Route you have just created should be listed
+```
+default via 172.25.0.1 dev eth0 proto kernel
+1.1.1.1 via 172.25.0.1 dev eth0                                  <-- This is the one!
+172.25.0.0/20 dev eth0 proto kernel scope link src 172.25.4.60
+```
+Done! Now you can try to connect again.
