@@ -6,7 +6,7 @@ DPIMyAss is a simple UDP proxy designed for bypassing DPI with close-to-zero ove
 
 ## Why? 🤔
 
-I made this proxy to restore the wireguard functionality in places where it was blocked. DPIMyAss is way simpler than the other solutions like, say, shadowsocks, and it does not require messing with the ip interfaces to get it running. All you have to do to set it up with wireguard is run this proxy on both your server and client, and change the endpoint to local proxy address in your wireguard config.
+I made this proxy to restore the wireguard functionality in places where it was blocked. DPIMyAss is way simpler than the other solutions like, say, shadowsocks, and it does not require messing with the ip interfaces to get it running. All you have to do to set it up with wireguard is run this proxy on both your server and client, and change the endpoint to local proxy address in your wireguard config (Also you might have to do [this](#wireguard-specific-solution)).
 
 DPIMyAss also does not create any additional overhead on the network. The forwarded packets stay the exact same size they were, and no new packets are created.
 
@@ -56,7 +56,14 @@ key = [239, 42, 13, 69]
 ```
 
 ## Troubleshooting 🪛
-You might encounter a problem when trying to use VPN over dpimyass hosted on the same machine. To fix this, you have to add an entry to a routing table with the endpoint IP bypassing your VPN. Here are a few examples of how to do this:
+You might encounter a problem when trying to use VPN over DPIMyAss hosted on the same machine. To fix this, you have to add an entry to a routing table with the endpoint IP bypassing your VPN. Here are a few examples of how to do this:
+
+### Wireguard-specific solution
+
+If your downstream address falls inside the ips listed in wireguard's `AllowedIPs`, the packets DPIMyAss sends will be routed over VPN too, and thus they will be stuck in a network loop.
+
+The simplest way to fix this is to exclude your downstream endpoint ip address from the wireguard's `AllowedIPs`. This can be done with any wireguard allowed ips calculator, for example with [this one](https://www.procustodibus.com/blog/2021/03/wireguard-allowedips-calculator/).
+
 
 ### Windows
 1. Disable your VPN.
