@@ -1,26 +1,10 @@
 FROM rustlang/rust:nightly-slim AS builder
-
 WORKDIR /build
-
 COPY . .
-RUN cargo build --release
+RUN rustup target add x86_64-unknown-linux-musl
+RUN cargo build --release --target=x86_64-unknown-linux-musl
 
-FROM debian:12-slim
-
+FROM alpine:3.19
 VOLUME /config
-
-COPY --from=builder --chmod=755 /build/target/release/dpimyass /opt/dpimyass
-
+COPY --from=builder --chmod=755 /build/target/x86_64-unknown-linux-musl/release/dpimyass /opt/dpimyass
 CMD [ "/opt/dpimyass", "/config/config.toml" ]
-
-RUN apt update -y && apt install xz-utils -y
-
-ARG S6_OVERLAY_VERSION=3.1.6.2
-
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
-RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
-
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
-RUN tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz
-
-ENTRYPOINT ["/init"]
