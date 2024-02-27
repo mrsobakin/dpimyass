@@ -41,18 +41,33 @@ cargo build --release
 DPIMyAss uses a TOML configuration file to specify its settings. Below is an example configuration:
 
 ```toml
-[proxy]
+[[servers]]
+name = "Example bridge"
+key = [239, 42, 13, 69]
+
+[servers.proxy]
 address = "0.0.0.0:1337"
 buffer = 16384
 timeout = 60
 
-[downstream]
+[servers.downstream]
 address = "example.com:1337"
 buffer = 16384
 timeout = 60
 
-[obfuscation]
-key = [239, 42, 13, 69]
+[[servers]]
+name = "Another bridge"
+key = [4, 5, 11]
+
+[servers.proxy]
+address = "0.0.0.0:1338"
+buffer = 16384
+timeout = 120
+
+[servers.downstream]
+address = "endpoint2.exmaple.com:443"
+buffer = 16384
+timeout = 120
 ```
 
 ## Troubleshooting 🪛

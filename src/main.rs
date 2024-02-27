@@ -28,12 +28,17 @@ where D: Deserializer<'de> {
        .ok_or(serde::de::Error::custom("No address"))
 }
 
-
 #[derive(Deserialize, Debug)]
 struct Config {
+    servers: Vec<ServerConfig>
+}
+
+#[derive(Deserialize, Debug)]
+struct ServerConfig {
+    name: String,
+    key: Vec<u8>,
     proxy: EndpointConfig,
     downstream: EndpointConfig,
-    obfuscation: Obfuscation,
 }
 
 #[serde_as]
@@ -44,11 +49,6 @@ struct EndpointConfig {
     buffer: usize,
     #[serde_as(as = "DurationSeconds<u64>")]
     timeout: Duration,
-}
-
-#[derive(Deserialize, Debug)]
-struct Obfuscation {
-    key: Vec<u8>,
 }
 
 
@@ -101,6 +101,28 @@ async fn forward_loop(mut upstream: StreamAndInfo<impl Stream>, mut downstream: 
     Ok::<(), std::io::Error>(())
 }
 
+async fn server_loop(config: &'static ServerConfig) -> Result<(), Box<dyn Error>> {
+    let listener = UdpListener::bind(config.proxy.address).await?;
+
+    println!("[{}] Listening on {:?}, downstream {:?}", config.name, config.proxy.address, config.downstream.address);
+
+    loop {
+        let (upstream, addr) = listener.accept().await?;
+        let upstream = StreamAndInfo::new(upstream, &config.proxy);
+
+        println!("[{}] New incoming connection from {addr:?}", config.name);
+
+        tokio::spawn(async move {
+            let downstream = StreamAndInfo::new(UdpStream::connect(config.downstream.address).await?, &config.downstream);
+
+            if let Err(e) = forward_loop(upstream, downstream, &config.key).await {
+                println!("[{}] Error: {e:?} ({addr:?})", config.name);
+            }
+
+            Ok::<(), std::io::Error>(())
+        });
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -111,24 +133,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
         toml::from_str(&s)?
     });
 
-    let listener = UdpListener::bind(config.proxy.address).await?;
+    let mut handles = vec![];
 
-    println!("Listening on {:?}, downstream {:?}", config.proxy.address, config.downstream.address);
-
-    loop {
-        let (upstream, addr) = listener.accept().await?;
-        let upstream = StreamAndInfo::new(upstream, &config.proxy);
-
-        println!("New incoming connection from {addr:?}");
-
-        tokio::spawn(async move {
-            let downstream = StreamAndInfo::new(UdpStream::connect(config.downstream.address).await?, &config.downstream);
-
-            if let Err(e) = forward_loop(upstream, downstream, &config.obfuscation.key).await {
-                println!("Error: {e:?} ({addr:?})");
+    for server_config in config.servers.iter() {
+        handles.push(tokio::spawn(async {
+            loop {
+                match server_loop(server_config).await {
+                    Err(err) => {
+                        println!("[{}] encountered a loop-wise error: {err}", server_config.name);
+                    }
+                    _ => ()
+                }
             }
-
-            Ok::<(), std::io::Error>(())
-        });
+        }));
     }
+
+    for handle in handles {
+        let _ = handle.await;
+    }
+
+    Ok(())
 }
