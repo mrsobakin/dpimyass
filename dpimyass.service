@@ -1,0 +1,11 @@
+[Unit]
+Description=DPIMyAss proxy
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/dpimyass /etc/dpimyass/config.toml
+Type=simple
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

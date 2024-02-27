@@ -36,7 +36,11 @@ cargo build --release
 2. Edit the config file `./config/config.toml`
 3. Run `docker-compose up -d`, and let docker do all the magic!
 
-### Configuration ⚙️
+### Arch Linux 😈
+
+Also, if use Arch linux, you can just run `makepkg -si` in the project root. It will automatically install DPIMyAss systemd service for you.
+
+## Configuration ⚙️
 
 DPIMyAss uses a TOML configuration file to specify its settings. Below is an example configuration:
 
