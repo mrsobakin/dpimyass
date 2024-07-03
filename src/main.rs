@@ -36,9 +36,15 @@ struct Config {
 #[derive(Deserialize, Debug)]
 struct ServerConfig {
     name: String,
-    key: Vec<u8>,
+    #[serde(flatten)]
+    obfs: ObfsConfig,
     proxy: EndpointConfig,
     downstream: EndpointConfig,
+}
+
+#[derive(Deserialize, Debug)]
+struct ObfsConfig {
+    key: Vec<u8>,
 }
 
 #[serde_as]
@@ -52,8 +58,8 @@ struct EndpointConfig {
 }
 
 
-fn xor_obfuscate(data: &mut [u8], key: &[u8]) {
-    for (di, ki) in data.iter_mut().zip(key.iter().cycle()) {
+fn xor_obfuscate(data: &mut [u8], cfg: &ObfsConfig) {
+    for (di, ki) in data.iter_mut().zip(cfg.key.iter().cycle()) {
         *di ^= ki
     }
 }
@@ -78,7 +84,7 @@ impl<S: Stream> StreamAndInfo<S> {
 }
 
 
-async fn forward_loop(mut upstream: StreamAndInfo<impl Stream>, mut downstream: StreamAndInfo<impl Stream>, key: &[u8]) -> Result<(), std::io::Error> {
+async fn forward_loop(mut upstream: StreamAndInfo<impl Stream>, mut downstream: StreamAndInfo<impl Stream>, cfg: &ObfsConfig) -> Result<(), std::io::Error> {
     let mut upbuf = vec![0u8; upstream.buffer];
     let mut downbuf = vec![0u8; downstream.buffer];
 
@@ -86,12 +92,12 @@ async fn forward_loop(mut upstream: StreamAndInfo<impl Stream>, mut downstream: 
         tokio::select! {
             n = timeout(upstream.timeout, upstream.stream.read(&mut upbuf)) => {
                 let n = n??;
-                xor_obfuscate(&mut upbuf[0..n], key);
+                xor_obfuscate(&mut upbuf[0..n], cfg);
                 downstream.stream.write_all(&upbuf[0..n]).await?;
             },
             n = timeout(downstream.timeout, downstream.stream.read(&mut downbuf)) => {
                 let n = n??;
-                xor_obfuscate(&mut downbuf[0..n], key);
+                xor_obfuscate(&mut downbuf[0..n], cfg);
                 upstream.stream.write_all(&downbuf[0..n]).await?;
             }
         };
@@ -115,7 +121,7 @@ async fn server_loop(config: &'static ServerConfig) -> Result<(), Box<dyn Error>
         tokio::spawn(async move {
             let downstream = StreamAndInfo::new(UdpStream::connect(config.downstream.address).await?, &config.downstream);
 
-            if let Err(e) = forward_loop(upstream, downstream, &config.key).await {
+            if let Err(e) = forward_loop(upstream, downstream, &config.obfs).await {
                 println!("[{}] Error: {e:?} ({addr:?})", config.name);
             }
 
