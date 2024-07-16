@@ -1,6 +1,6 @@
 [package]
 name = "dpimyass"
-version = "0.3.0"
+version = "1.0.0"
 edition = "2021"
 
 [dependencies]
@@ -8,4 +8,3 @@ tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_with = "3.5.0"
 toml = "0.8"
-udp-stream = "0.0.10"

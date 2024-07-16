@@ -1,4 +1,4 @@
-FROM rustlang/rust:nightly-slim AS builder
+FROM rust:1.79.0-slim AS builder
 WORKDIR /build
 COPY . .
 RUN rustup target add x86_64-unknown-linux-musl

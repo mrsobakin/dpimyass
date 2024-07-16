@@ -49,28 +49,29 @@ DPIMyAss uses a TOML configuration file to specify its settings. Below is an exa
 name = "Example bridge"
 key = [239, 42, 13, 69]
 
-[servers.proxy]
+[servers.relay]
 address = "0.0.0.0:1337"
-buffer = 16384
+buffer = 65536
 timeout = 60
 
-[servers.downstream]
+[servers.upstream]
 address = "example.com:1337"
-buffer = 16384
+buffer = 65536
 timeout = 60
 
 [[servers]]
 name = "Another bridge"
 key = [4, 5, 11]
+first = 64  # Obfuscate only the first 64 bytes
 
-[servers.proxy]
+[servers.relay]
 address = "0.0.0.0:1338"
-buffer = 16384
+buffer = 65536
 timeout = 120
 
-[servers.downstream]
+[servers.upstream]
 address = "endpoint2.exmaple.com:443"
-buffer = 16384
+buffer = 65536
 timeout = 120
 ```
 
@@ -79,9 +80,9 @@ You might encounter a problem when trying to use VPN over DPIMyAss hosted on the
 
 ### Wireguard-specific solution
 
-If your downstream address falls inside the ips listed in wireguard's `AllowedIPs`, the packets DPIMyAss sends will be routed over VPN too, and thus they will be stuck in a network loop.
+If your upstream address falls inside the ips listed in wireguard's `AllowedIPs`, the packets DPIMyAss sends will be routed over VPN too, and thus they will be stuck in a network loop.
 
-The simplest way to fix this is to exclude your downstream endpoint ip address from the wireguard's `AllowedIPs`. This can be done with any wireguard allowed ips calculator, for example with [this one](https://www.procustodibus.com/blog/2021/03/wireguard-allowedips-calculator/).
+The simplest way to fix this is to exclude your upstream endpoint ip address from the wireguard's `AllowedIPs`. This can be done with any wireguard allowed ips calculator, for example with [this one](https://www.procustodibus.com/blog/2021/03/wireguard-allowedips-calculator/).
 
 
 ### Windows

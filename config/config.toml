@@ -2,26 +2,27 @@
 name = "Example bridge"
 key = [239, 42, 13, 69]
 
-[servers.proxy]
+[servers.relay]
 address = "0.0.0.0:1337"
-buffer = 16384
+buffer = 65536
 timeout = 60
 
-[servers.downstream]
+[servers.upstream]
 address = "example.com:1337"
-buffer = 16384
+buffer = 65536
 timeout = 60
 
 [[servers]]
 name = "Another bridge"
 key = [4, 5, 11]
+first = 64  # Obfuscate only the first 64 bytes
 
-[servers.proxy]
+[servers.relay]
 address = "0.0.0.0:1338"
-buffer = 16384
+buffer = 65536
 timeout = 120
 
-[servers.downstream]
+[servers.upstream]
 address = "endpoint2.exmaple.com:443"
-buffer = 16384
+buffer = 65536
 timeout = 120
