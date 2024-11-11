@@ -1,8 +1,6 @@
-version: "3"
-
 services:
   dpimyass:
-    image: mrsobakin/dpimyass
+    image: ghcr.io/mrsobakin/dpimyass
     volumes:
       - ./config:/config
     ports:

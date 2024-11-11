@@ -41,7 +41,7 @@ If you want to build the image yourself:
 1. Clone this repo and `cd` into it.
 2. Run `docker build . -t dpimyass`
 3. Edit the config file `./config/config.toml`
-4. Edit the `docker-compose.yml` to use `dpimyass` image instead of `mrsobakin/dpimyass`.
+4. Edit the `docker-compose.yml` to use `dpimyass` image instead of `ghcr.io/mrsobakin/dpimyass`.
 5. Run `docker-compose up -d`.
 
 ### Arch Linux 😈
