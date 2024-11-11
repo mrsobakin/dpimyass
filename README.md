@@ -32,9 +32,17 @@ cargo build --release
 ```
 
 ### Docker 🐋
-1. Clone this repo and `cd` into it
+If you just want to use the prebuilt image:
+1. Clone this repo and `cd` into it, or manually copy `docker-compose.yml` and config from the project root.
 2. Edit the config file `./config/config.toml`
 3. Run `docker-compose up -d`, and let docker do all the magic!
+
+If you want to build the image yourself:
+1. Clone this repo and `cd` into it.
+2. Run `docker build . -t dpimyass`
+3. Edit the config file `./config/config.toml`
+4. Edit the `docker-compose.yml` to use `dpimyass` image instead of `mrsobakin/dpimyass`.
+5. Run `docker-compose up -d`.
 
 ### Arch Linux 😈
 
