@@ -14,5 +14,5 @@ build() {
 package() {
     install -Dm755 "$srcdir/../target/release/dpimyass" "$pkgdir/usr/bin/dpimyass"
     install -Dm644 "$srcdir/../dpimyass.service" "$pkgdir/usr/lib/systemd/system/dpimyass.service"
-    install -Dm600 "$srcdir/../config.toml" "$pkgdir/etc/dpimyass/config.toml"
+    install -Dm600 "$srcdir/../config/config.toml" "$pkgdir/etc/dpimyass/config/config.toml"
 }
