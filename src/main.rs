@@ -1,21 +1,19 @@
 mod config;
+mod connmap;
 
-use std::collections::HashMap;
 use std::net::{Ipv4Addr, IpAddr};
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 use std::{
     error::Error,
     net::SocketAddr,
 };
 
 use tokio::net::UdpSocket;
-use tokio::sync::Mutex;
-use tokio::sync::RwLock;
-use tokio::sync::RwLockWriteGuard;
 use tokio::task::JoinSet;
 use tokio::time::timeout;
 
 use crate::config::*;
+use crate::connmap::ConnectionMap;
 
 
 const LOCAL: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0);
@@ -37,11 +35,7 @@ fn xor_obfuscate(data: &mut [u8], cfg: &ObfsConfig) {
 struct ServerHandler {
     config: ServerConfig,
     socket: UdpSocket,
-    // TODO: clean up hashmap after connections time out.
-    // As of now, entries will forever stay in memory.
-    // It's not *so* bad, but it's still a memory leak.
-    upstreams: RwLock<HashMap<SocketAddr, Mutex<Weak<UdpSocket>>>>,
-    upgrade_sem: Mutex<()>,
+    upstreams: ConnectionMap,
 }
 
 impl ServerHandler {
@@ -81,52 +75,6 @@ impl ServerHandler {
         }
     }
 
-    async fn get_upstream_for(&'static self, downstream_addr: SocketAddr) -> std::io::Result<Arc<UdpSocket>> {
-        let map_rlock = self.upstreams.read().await;
-
-        if let Some(slot) = map_rlock.get(&downstream_addr) {
-            let mut slot_lock = slot.lock().await;
-
-            return match slot_lock.upgrade() {
-                Some(udp) => Ok(udp),
-                None => {
-                    let udp = self.open_upstream(downstream_addr).await?;
-                    *slot_lock = Arc::downgrade(&udp);
-                    Ok(udp)
-                }
-            }
-        };
-
-        // Safely upgrade rlock to wlock
-        let mut map_wlock = {
-            let lock = self.upgrade_sem.lock().await;
-            drop(map_rlock);
-            let map_wlock = self.upstreams.write().await;
-            drop(lock);
-            map_wlock
-        };
-
-        // TODO: find a way to get slot directly, without hasing
-        // multiple times and having a window between locks.
-        map_wlock.insert(downstream_addr, Weak::default().into());
-        let slot = RwLockWriteGuard::downgrade_map(map_wlock, |map| {
-            map.get(&downstream_addr).expect("unreachable")
-        });
-
-        let mut slot_lock = slot.lock().await;
-
-        // Check whether slot is still empty (weak),
-        // as it might have been initialized inbetween
-        // outer lock downgrading and inner lock acquiring.
-        if let Some(udp) = slot_lock.upgrade() {
-            return Ok(udp);
-        }
-
-        let udp = self.open_upstream(downstream_addr).await?;
-        *slot_lock = Arc::downgrade(&udp);
-        Ok(udp)
-    }
-
     pub async fn listen(self) {
         let sself = Box::leak(Box::new(self));
 
@@ -138,7 +86,11 @@ impl ServerHandler {
             tokio::spawn(async move {
                 xor_obfuscate(&mut buf, &sself_ref.config.obfs);
 
-                let upstream = match sself_ref.get_upstream_for(from).await {
+                let upstream = sself_ref.upstreams.get_or(from, async {
+                    sself_ref.open_upstream(from).await
+                }).await;
+
+                let upstream = match upstream {
                     Ok(u) => u,
                     Err(err) => {
                         println!("[{}] Error opening upstream: {err}", sself_ref.config.name);
@@ -162,8 +114,7 @@ impl ServerHandler {
         Ok(Self {
             config,
             socket,
-            upstreams: Default::default(),
-            upgrade_sem: Default::default(),
+            upstreams: ConnectionMap::new(),
         })
     }
 }

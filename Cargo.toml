@@ -8,3 +8,4 @@ tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_with = "3.5.0"
 toml = "0.8"
+hashbrown = "0.16.1"
