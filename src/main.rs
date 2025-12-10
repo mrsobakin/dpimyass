@@ -10,7 +10,8 @@ use std::{
 
 use tokio::net::UdpSocket;
 use tokio::task::JoinSet;
-use tokio::time::timeout;
+use tokio::time::{Timeout, Duration};
+use std::future::Future;
 
 use crate::config::*;
 use crate::connmap::ConnectionMap;
@@ -18,6 +19,16 @@ use crate::connmap::ConnectionMap;
 
 const LOCAL: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0);
 
+
+trait TimeoutExt<F> where F: Future {
+    fn timeout(self, duration: Duration) -> Timeout<F>;
+}
+
+impl<F> TimeoutExt<F> for F where F: Future {
+    fn timeout(self, duration: Duration) -> Timeout<F> {
+        tokio::time::timeout(duration, self)
+    }
+}
 
 fn xor_obfuscate(data: &mut [u8], cfg: &ObfsConfig) {
     let iter = data.iter_mut()
@@ -41,7 +52,9 @@ struct ServerHandler {
 impl ServerHandler {
     async fn open_upstream(&'static self, downstream_addr: SocketAddr) -> std::io::Result<Arc<UdpSocket>> {
         let socket = UdpSocket::bind(LOCAL).await?;
-        timeout(self.config.upstream.timeout, socket.connect(self.config.upstream.address)).await??;
+
+        socket.connect(self.config.upstream.address)
+            .timeout(self.config.upstream.timeout).await??;
 
         let socket = Arc::new(socket);
 
@@ -56,7 +69,7 @@ impl ServerHandler {
         loop {
             let mut buf = Vec::with_capacity(self.config.upstream.buffer);
 
-            match timeout(self.config.upstream.timeout, upstream.recv_buf(&mut buf)).await {
+            match upstream.recv_buf(&mut buf).timeout(self.config.upstream.timeout).await {
                 Ok(Err(err)) => {
                     println!("[{}] Error while listening on {downstream_addr}: {err}", self.config.name);
                     return Some(());
@@ -70,7 +83,8 @@ impl ServerHandler {
 
             tokio::spawn(async move {
                 xor_obfuscate(&mut buf, &self.config.obfs);
-                let _ = timeout(self.config.relay.timeout, self.socket.send_to(&buf, downstream_addr)).await;
+                let _ = self.socket.send_to(&buf, downstream_addr)
+                    .timeout(self.config.relay.timeout).await;
             });
         }
     }
@@ -98,7 +112,7 @@ impl ServerHandler {
                     }
                 };
 
-                match timeout(sself_ref.config.upstream.timeout, upstream.send(&buf)).await {
+                match upstream.send(&buf).timeout(sself_ref.config.upstream.timeout).await {
                     Ok(Err(err)) => println!("[{}] Error sending packet: {err}", sself_ref.config.name),
                     Err(_) => println!("[{}] Timeout sending packet", sself_ref.config.name),
                     _ => {},
